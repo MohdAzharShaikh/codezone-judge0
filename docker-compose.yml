@@ -1,0 +1,49 @@
+# This is the final, simplified version for maximum compatibility on Windows.
+# It uses an .env file and removes the problematic file mount.
+
+x-logging:
+  &default-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: 100M
+
+services:
+  server:
+    image: judge0/judge0:latest
+    # --- MODIFIED: Removed the volumes section ---
+    # This prevents any potential file permission or line-ending issues.
+    ports:
+      - "2358:2358"
+    privileged: true
+    <<: *default-logging
+    restart: always
+
+  worker:
+    image: judge0/judge0:latest
+    command: ["./scripts/workers"]
+    # --- MODIFIED: Removed the volumes section ---
+    privileged: true
+    <<: *default-logging
+    restart: always
+
+  db:
+    image: postgres:16.2
+    env_file: .env
+    volumes:
+      - data:/var/lib/postgresql/data/
+    <<: *default-logging
+    restart: always
+
+  redis:
+    image: redis:7.2.4
+    command: [
+      "bash", "-c",
+      'docker-entrypoint.sh --appendonly no --requirepass "$$REDIS_PASSWORD"'
+    ]
+    env_file: .env
+    <<: *default-logging
+    restart: always
+
+volumes:
+  data:
