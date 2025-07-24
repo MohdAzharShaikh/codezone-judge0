@@ -1,5 +1,5 @@
 # This is the final, most robust Dockerfile for deploying Judge0.
-# It uses a modern base image to fix build errors and the original entrypoint for runtime stability.
+# It uses a modern base image, the correct entrypoint, and fixes line ending issues for Windows users.
 
 # Use a modern, supported version of Debian
 FROM debian:bullseye-slim
@@ -8,11 +8,13 @@ FROM debian:bullseye-slim
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Update package lists and install necessary dependencies
+# --- FIX: Added 'dos2unix' to convert line endings ---
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       build-essential \
       ca-certificates \
       curl \
+      dos2unix \
       git \
       libpq-dev \
       libseccomp-dev \
@@ -41,13 +43,14 @@ RUN bundle install --deployment --without development test
 # Install Node.js dependencies
 RUN npm install --production
 
-# --- FIX: Make the official entrypoint script executable ---
-RUN chmod +x /usr/src/app/docker-entrypoint.sh
+# --- FIX: Convert all shell scripts to Unix format and make them executable ---
+RUN find /usr/src/app -name "*.sh" -exec dos2unix {} \; && \
+    find /usr/src/app -name "*.sh" -exec chmod +x {} \;
 
 # Expose the port the server runs on
 EXPOSE 2358
 
-# --- FIX: Use the official entrypoint and command ---
+# Use the official entrypoint and command
 # This ensures the server waits for the database before starting.
 ENTRYPOINT ["/usr/src/app/docker-entrypoint.sh"]
 CMD ["./scripts/server"]
