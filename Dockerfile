@@ -11,6 +11,7 @@ RUN apt-get update && \
       ca-certificates \
       curl \
       git \
+      libpq-dev \
       libseccomp-dev \
       libyaml-dev \
       nodejs \
