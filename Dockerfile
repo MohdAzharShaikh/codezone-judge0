@@ -1,5 +1,5 @@
 # This is the final, most robust Dockerfile for deploying Judge0.
-# It uses a modern base image, the correct entrypoint, and fixes line ending and permission issues.
+# It uses a modern base image, fixes PATH issues, and handles permissions.
 
 # Use a modern, supported version of Debian
 FROM debian:bullseye-slim
@@ -8,7 +8,6 @@ FROM debian:bullseye-slim
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Update package lists and install necessary dependencies
-# --- FIX: Added 'cron' and 'dos2unix' ---
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       build-essential \
@@ -44,8 +43,11 @@ RUN bundle install --deployment --without development test
 # Install Node.js dependencies
 RUN npm install --production
 
-# --- FIX: Convert all scripts to Unix format and make them executable ---
-# This now correctly targets all necessary scripts, not just .sh files.
+# --- FIX: Set the PATH to include the gem executables ---
+# This ensures that commands like 'rails' can be found by the system.
+ENV PATH /usr/src/app/vendor/bundle/ruby/2.7.0/bin:$PATH
+
+# Convert all scripts to Unix format and make them executable
 RUN find /usr/src/app/scripts -type f -exec dos2unix {} + && \
     find /usr/src/app/scripts -type f -exec chmod +x {} + && \
     dos2unix /usr/src/app/docker-entrypoint.sh && \
@@ -55,6 +57,5 @@ RUN find /usr/src/app/scripts -type f -exec dos2unix {} + && \
 EXPOSE 2358
 
 # Use the official entrypoint and command
-# This ensures the server waits for the database before starting.
 ENTRYPOINT ["/usr/src/app/docker-entrypoint.sh"]
 CMD ["./scripts/server"]
